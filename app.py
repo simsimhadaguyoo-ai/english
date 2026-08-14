@@ -11,18 +11,14 @@ st.set_page_config(
 # 하드코딩된 API 키 설정
 DEFAULT_API_KEY = "up_Y7OKHBUB2q7pi7C4E1ILIWItBAUOG"
 
-# 사이드바: 설정 (입력란을 기본 키로 채워둠)
+# 사이드바: 설정 (API 키 입력란만 유지)
 st.sidebar.header("⚙️ 설정")
 api_key = st.sidebar.text_input(
     "Upstage API Key", value=DEFAULT_API_KEY, type="password"
 )
-major_field = st.sidebar.text_input(
-    "전공 분야 (선택)",
-    placeholder="예: 컴퓨터공학, 생명과학, 경제학 등",
-)
 
 st.title("📚 나만의 AI 전공 논문 번역기 & 단어장")
-st.markdown("논문 페이지 캡처본을 업로드하면 **전공 맞춤형 번역**과 **핵심 단어장**을 생성합니다.")
+st.markdown("논문 페이지 캡처본을 업로드하면 **학술 맞춤형 번역**과 **핵심 단어장**을 생성합니다.")
 
 # 파일 업로드
 uploaded_file = st.file_uploader(
@@ -44,22 +40,22 @@ def extract_text_with_upstage_ocr(image_file, api_key):
 
 
 # Upstage Solar LLM 함수
-def process_with_solar(extracted_text, major_field, api_key):
+def process_with_solar(extracted_text, api_key):
   url = "https://api.upstage.ai/v1/solar/chat/completions"
   headers = {
       "Authorization": f"Bearer {api_key}",
       "Content-Type": "application/json",
   }
 
-  system_content = f"""
-    당신은 {major_field if major_field else "학술"} 분야의 전문 번역가입니다.
-    제공된 텍스트를 문맥에 맞게 번역하고, 중요한 핵심 단어를 정리해 주세요.
+  system_content = """
+    당신은 탁월한 학술 논문 및 원서 전문 번역가입니다.
+    제공된 텍스트를 문맥에 맞게 매끄럽게 번역하고, 중요한 핵심 단어를 정리해 주세요.
     
     ### 📝 전공 맞춤 번역
-    (자연스러운 한국어 번역)
+    (자연스럽고 전문적인 한국어 번역)
     
     ### 📖 핵심 단어장
-    | 영어 단어 | 품사 | 한국어 뜻 | 전공 맥락 설명 |
+    | 영어 단어 | 품사 | 한국어 뜻 | 맥락 설명/예시 |
     | :--- | :--- | :--- | :--- |
     """
 
@@ -89,7 +85,7 @@ if uploaded_file is not None:
       uploaded_file.seek(0)
       ocr_text = extract_text_with_upstage_ocr(uploaded_file, api_key)
       if ocr_text:
-        result = process_with_solar(ocr_text, major_field, api_key)
+        result = process_with_solar(ocr_text, api_key)
         if result:
           st.markdown("---")
           st.markdown(result)
