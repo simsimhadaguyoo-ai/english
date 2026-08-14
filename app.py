@@ -8,12 +8,13 @@ st.set_page_config(
     page_title="AI 전공 논문 번역기 & 단어장", page_icon="📚", layout="wide"
 )
 
-# 사이드바: API 키 및 설정
+# 하드코딩된 API 키 설정
+DEFAULT_API_KEY = "up_Y7OKHBUB2q7pi7C4E1ILIWItBAUOG"
+
+# 사이드바: 설정 (입력란을 기본 키로 채워둠)
 st.sidebar.header("⚙️ 설정")
-# Streamlit Secrets(배포 시 설정)을 우선 사용하고, 없으면 수동 입력받음
-default_api_key = st.secrets.get("UPSTAGE_API_KEY", "")
 api_key = st.sidebar.text_input(
-    "Upstage API Key", value=default_api_key, type="password"
+    "Upstage API Key", value=DEFAULT_API_KEY, type="password"
 )
 major_field = st.sidebar.text_input(
     "전공 분야 (선택)",
@@ -24,29 +25,33 @@ st.title("📚 나만의 AI 전공 논문 번역기 & 단어장")
 st.markdown("논문 페이지 캡처본을 업로드하면 **전공 맞춤형 번역**과 **핵심 단어장**을 생성합니다.")
 
 # 파일 업로드
-uploaded_file = st.file_uploader("이미지 업로드 (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
+uploaded_file = st.file_uploader(
+    "이미지 업로드 (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"]
+)
+
 
 # Upstage OCR 함수
 def extract_text_with_upstage_ocr(image_file, api_key):
-    url = "https://api.upstage.ai/v1/document-ai/ocr"
-    headers = {"Authorization": f"Bearer {api_key}"}
-    files = {"document": image_file}
-    response = requests.post(url, headers=headers, files=files)
-    if response.status_code == 200:
-        return response.json().get("text", "")
-    else:
-        st.error(f"OCR API 오류: {response.status_code}")
-        return None
+  url = "https://api.upstage.ai/v1/document-ai/ocr"
+  headers = {"Authorization": f"Bearer {api_key}"}
+  files = {"document": image_file}
+  response = requests.post(url, headers=headers, files=files)
+  if response.status_code == 200:
+    return response.json().get("text", "")
+  else:
+    st.error(f"OCR API 오류: {response.status_code} - {response.text}")
+    return None
 
-# Upstage Solar LLM 함수 (모델명 수정: solar-pro)
+
+# Upstage Solar LLM 함수
 def process_with_solar(extracted_text, major_field, api_key):
-    url = "https://api.upstage.ai/v1/solar/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+  url = "https://api.upstage.ai/v1/solar/chat/completions"
+  headers = {
+      "Authorization": f"Bearer {api_key}",
+      "Content-Type": "application/json",
+  }
 
-    system_content = f"""
+  system_content = f"""
     당신은 {major_field if major_field else "학술"} 분야의 전문 번역가입니다.
     제공된 텍스트를 문맥에 맞게 번역하고, 중요한 핵심 단어를 정리해 주세요.
     
@@ -58,31 +63,33 @@ def process_with_solar(extracted_text, major_field, api_key):
     | :--- | :--- | :--- | :--- |
     """
 
-    payload = {
-        "model": "solar-pro",  # 공식 지원 모델명으로 수정
-        "messages": [
-            {"role": "system", "content": system_content},
-            {"role": "user", "content": f"다음 텍스트를 처리해 줘:\n\n{extracted_text}"},
-        ],
-        "temperature": 0.3,
-    }
+  payload = {
+      "model": "solar-pro",
+      "messages": [
+          {"role": "system", "content": system_content},
+          {"role": "user", "content": f"다음 텍스트를 처리해 줘:\n\n{extracted_text}"},
+      ],
+      "temperature": 0.3,
+  }
 
-    response = requests.post(url, headers=headers, json=payload)
-    if response.status_code == 200:
-        return response.json()["choices"][0]["message"]["content"]
-    else:
-        st.error(f"Solar LLM API 오류: {response.status_code} - {response.text}")
-        return None
+  response = requests.post(url, headers=headers, json=payload)
+  if response.status_code == 200:
+    return response.json()["choices"][0]["message"]["content"]
+  else:
+    st.error(f"Solar LLM API 오류: {response.status_code} - {response.text}")
+    return None
+
 
 # 메인 로직
 if uploaded_file is not None:
-    if not api_key:
-        st.warning("사이드바에 API Key를 입력하세요.")
-    elif st.button("🚀 번역 및 단어장 생성"):
-        with st.spinner("처리 중..."):
-            uploaded_file.seek(0)
-            ocr_text = extract_text_with_upstage_ocr(uploaded_file, api_key)
-            if ocr_text:
-                result = process_with_solar(ocr_text, major_field, api_key)
-                if result:
-                    st.markdown(result)
+  if not api_key:
+    st.warning("API Key가 입력되지 않았습니다.")
+  elif st.button("🚀 번역 및 단어장 생성", type="primary"):
+    with st.spinner("Upstage OCR과 Solar LLM으로 분석 중입니다..."):
+      uploaded_file.seek(0)
+      ocr_text = extract_text_with_upstage_ocr(uploaded_file, api_key)
+      if ocr_text:
+        result = process_with_solar(ocr_text, major_field, api_key)
+        if result:
+          st.markdown("---")
+          st.markdown(result)
