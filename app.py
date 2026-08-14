@@ -56,7 +56,7 @@ def preprocess_image(uploaded_file):
     return None
 
 
-# 🛠️ Upstage Document AI OCR API 호출 함수 (URL 수정 완료)
+# 🛠️ Upstage Document AI OCR API 호출 함수
 def extract_text_from_image(image_bytes, api_key):
   try:
     url = "https://api.upstage.ai/v1/document-ai/ocr"
@@ -76,7 +76,7 @@ def extract_text_from_image(image_bytes, api_key):
     return None
 
 
-# 🛠️ Upstage Solar LLM API 호출 함수 (URL 및 모델명 수정 완료)
+# 🛠️ Upstage Solar LLM API 호출 함수
 def generate_translation_and_vocab(
     english_text, api_key, major_info, user_level
 ):
@@ -263,9 +263,13 @@ else:
             )
             st.markdown(ai_result)
 
+            # 🛠️ [모바일 다운로드 최적화] 바이트 형식으로 인코딩하여 모바일 저장 에러 방지
+            report_bytes = ai_result.encode("utf-8-sig")
+
             st.download_button(
                 label="💾 나만의 학습 리포트 다운로드 (.txt)",
-                data=ai_result,
-                file_name=f"AI_Study_Report_{user_level}.txt",
+                data=report_bytes,
+                file_name="AI_Study_Report.txt",
                 mime="text/plain",
+                use_container_width=True,
             )
